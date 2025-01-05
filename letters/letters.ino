@@ -56,13 +56,11 @@ void lightWord(String word) {
   // }
   int idx = letters.indexOf(word);
   Serial.println(idx);
-  int endIdx = idx + word.length();
-  if (idx != -1) {
-    for (int i = idx; i < endIdx; i++) {
+  while (idx != -1) {
+    for (int i = idx; i < idx + word.length(); i++) {
       leds[i] = CRGB::Purple;
-    }
-    // idx = letters.indexOf(word, endIdx);
-    // Serial.println(idx);
+    }    
+    idx = letters.indexOf(word, idx + word.length());
   }
 } 
 
@@ -70,7 +68,7 @@ void lightWord(String word) {
 void loop() {
   Serial.println("loop");
   // String targetWords[] = {"TW", "EN", "TY", "TIME", "IS"};
-  String targetWords[] = {"IT", "IS"};
+  String targetWords[] = {"N"};
   int size = sizeof(targetWords) / sizeof(targetWords[0]);
   for (int i = 0; i < size; i++) {
     lightWord(targetWords[i]);
