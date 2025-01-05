@@ -10,8 +10,8 @@
 
 CRGB leds[NUM_LEDS];
 
-const unsigned long INITIAL_HOURS = 21;
-const unsigned long INITIAL_MINUTES = 4;
+const unsigned long INITIAL_HOURS = 1;
+const unsigned long INITIAL_MINUTES = 40;
 String receivedData;
 String currentTime;
 String letters = "ITLISASTIMECDRETRAUQCATWENTYFIVEXOTFNETBFLAHPASTERUNINEEERHTXISENOFOURFIVETWONEVELETHGIESEVENTWELVEKCOLCOESNETPAMPIWINPMS";
@@ -57,10 +57,16 @@ String readValue(String key, String data) {
 }
 
 void setMinutesWords(int currentMinutes) {
-  if (currentMinutes >= 23 && currentMinutes <= 37) {
+  if (currentMinutes >= 28 && currentMinutes <= 32) {
     targetWordsMinutes[targetWordsMinutesLength++] = "HALF";
     targetWordsMinutes[targetWordsMinutesLength++] = "PAST";
-  } else if (currentMinutes >= 13 && currentMinutes <= 23) {
+  } else if (currentMinutes >= 23 && currentMinutes <= 27) {
+    targetWordsMinutes[targetWordsMinutesLength++] = "TWENTYFIVE";
+    targetWordsMinutes[targetWordsMinutesLength++] = "PAST";
+  } else if (currentMinutes >= 18 && currentMinutes <= 22) {
+    targetWordsMinutes[targetWordsMinutesLength++] = "TWENTY";
+    targetWordsMinutes[targetWordsMinutesLength++] = "PAST";
+  } else if (currentMinutes >= 13 && currentMinutes <= 17) {
     targetWordsMinutes[targetWordsMinutesLength++] = "QUARTER";
     targetWordsMinutes[targetWordsMinutesLength++] = "PAST";
   } else if (currentMinutes >= 8 && currentMinutes <= 12) {
@@ -69,7 +75,13 @@ void setMinutesWords(int currentMinutes) {
   } else if (currentMinutes >= 3 && currentMinutes <= 7) {
     targetWordsMinutes[targetWordsMinutesLength++] = "FIVE";
     targetWordsMinutes[targetWordsMinutesLength++] = "PAST";
-  } else if (currentMinutes >= 37 && currentMinutes <= 47) {
+  } else if (currentMinutes >= 33 && currentMinutes <= 37) {
+    targetWordsMinutes[targetWordsMinutesLength++] = "TWENTYFIVE";
+    targetWordsMinutes[targetWordsMinutesLength++] = "TO";
+  } else if (currentMinutes >= 38 && currentMinutes <= 42) {
+    targetWordsMinutes[targetWordsMinutesLength++] = "TWENTY";
+    targetWordsMinutes[targetWordsMinutesLength++] = "TO";
+  } else if (currentMinutes >= 43 && currentMinutes <= 47) {
     targetWordsMinutes[targetWordsMinutesLength++] = "QUARTER";
     targetWordsMinutes[targetWordsMinutesLength++] = "TO";
   } else if (currentMinutes >= 48 && currentMinutes <= 52) {
@@ -94,8 +106,9 @@ void setHoursWords(int currentHours) {
     targetWordsHours[targetWordsHoursLength++] = "PM";
   }
 
-  targetWordsHours[targetWordsHoursLength++] = HOUR_WORDS[currentHours % 12 - 1];
+  targetWordsHours[targetWordsHoursLength++] = HOUR_WORDS[(currentHours == 12 ? 12 : currentHours % 12) - 1];
 }
+
 
 void setTargetWordsBasedOnTime() {
   int currentHours, currentMinutes;
@@ -105,14 +118,23 @@ void setTargetWordsBasedOnTime() {
   setHoursWords(currentHours);
 }
 
-void lightWord(String word) {
+
+void lightMinutesWord(String word) {
   int idx = letters.indexOf(word);
-  Serial.println(idx);
-  while (idx != -1) {
+  if (idx != -1) {
     for (int i = idx; i < idx + word.length(); i++) {
       leds[i] = CRGB::Purple;
-    }    
-    idx = letters.indexOf(word, idx + word.length());
+    }
+  }
+}
+
+
+void lightHoursWord(String word) {
+  int idx = letters.lastIndexOf(word);
+  if (idx != -1) {
+    for (int i = idx; i < idx + word.length(); i++) {
+      leds[i] = CRGB::Purple;
+    }
   }
 }
 
@@ -141,12 +163,12 @@ void loop() {
   setTargetWordsBasedOnTime();
   // String targetWords[] = {"TWENTY", "QUARTER"};
   for (int i = 0; i < targetWordsMinutesLength; i++) {
-    lightWord(targetWordsMinutes[i]);
-    lightWord(reverseString(targetWordsMinutes[i]));
+    lightMinutesWord(targetWordsMinutes[i]);
+    lightMinutesWord(reverseString(targetWordsMinutes[i]));
   }
   for (int i = 0; i < targetWordsHoursLength; i++) {
-    lightWord(targetWordsHours[i]);
-    lightWord(reverseString(targetWordsHours[i]));
+    lightHoursWord(targetWordsHours[i]);
+    lightHoursWord(reverseString(targetWordsHours[i]));
   }
   targetWordsMinutesLength = 0;
   targetWordsHoursLength = 0;
