@@ -12,7 +12,7 @@ CRGB leds[NUM_LEDS];
 CRGB newLeds[NUM_LEDS];
 
 const unsigned long INITIAL_HOURS = 21;
-const unsigned long INITIAL_MINUTES = 57;
+const unsigned long INITIAL_MINUTES = 59;
 unsigned int MINUTE_THAT_TO_STATEMENTS_BEGIN = 33;
 String receivedData;
 String currentTime;
