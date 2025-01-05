@@ -10,8 +10,8 @@
 
 CRGB leds[NUM_LEDS];
 
-const unsigned long INITIAL_HOURS = 7;
-const unsigned long INITIAL_MINUTES = 59;
+const unsigned long INITIAL_HOURS = 1;
+const unsigned long INITIAL_MINUTES = 14;
 unsigned int MINUTE_THAT_TO_STATEMENTS_BEGIN = 33;
 String receivedData;
 String currentTime;
@@ -33,8 +33,9 @@ void setup() {
   FastLED.clear();
   FastLED.show();
 
-  // Serial.begin(9600);
-  // Serial.println("Waiting for data........");
+  Serial.begin(9600);
+  delay(1000);
+  Serial.println("Serial");
 
   // // Wait for data to arrive
   // while (Serial.available() == 0);
@@ -124,7 +125,13 @@ void setTargetWordsBasedOnTime() {
 
 int lightMinutesWord(String word) {
   int idx = letters.indexOf(word);
-  if (idx != -1) {
+  if (idx / DIM != (idx + word.length() - 1) / DIM) {
+    // match crosses rows; don't count it
+    Serial.println("Crosses rows, looking for next match");
+
+    idx = letters.indexOf(word, idx + 1);
+  }  
+  if (idx != -1) {      
     for (int i = idx; i < idx + word.length(); i++) {
       leds[i] = CRGB::Purple;
     }
@@ -135,6 +142,11 @@ int lightMinutesWord(String word) {
 
 int lightHoursWord(String word) {
   int idx = letters.lastIndexOf(word);
+  if (idx / DIM != (idx + word.length() - 1) / DIM) {
+    Serial.println("Crosses rows, looking for next match");
+    // match crosses rows; don't count it
+    idx = letters.indexOf(word, idx + 1);
+  }
   if (idx != -1) {
     for (int i = idx; i < idx + word.length(); i++) {
       leds[i] = CRGB::Purple;
