@@ -158,6 +158,8 @@ void getTime(unsigned long milliseconds, int& hours, int& minutes) {
 
 
 void loop() {
+  targetWordsMinutes[targetWordsMinutesLength++] = "IT";
+  targetWordsMinutes[targetWordsMinutesLength++] = "IS";
   Serial.println("loop");
   // String targetWords[] = {"TW", "EN", "TY", "TIME", "IS"};
   setTargetWordsBasedOnTime();
