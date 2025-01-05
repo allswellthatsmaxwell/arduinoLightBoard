@@ -10,10 +10,12 @@
 
 CRGB leds[NUM_LEDS];
 
-const unsigned long INITIAL_HOURS = 1;
-const unsigned long INITIAL_MINUTES = 40;
+const unsigned long INITIAL_HOURS = 7;
+const unsigned long INITIAL_MINUTES = 59;
+unsigned int MINUTE_THAT_TO_STATEMENTS_BEGIN = 33;
 String receivedData;
 String currentTime;
+// String letters = "ITLISASTIME CDRETRAUQCA TWENTYFIVEX OTFNETBFLAH PASTERUNINE EERHTXISENO FOURFIVETWO NEVELETHGIE SEVENTWELVE KCOLCOESNET PAMPIWINPMS";
 String letters = "ITLISASTIMECDRETRAUQCATWENTYFIVEXOTFNETBFLAHPASTERUNINEEERHTXISENOFOURFIVETWONEVELETHGIESEVENTWELVEKCOLCOESNETPAMPIWINPMS";
 
 const char* HOUR_WORDS[] = {"ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE"};
@@ -75,7 +77,7 @@ void setMinutesWords(int currentMinutes) {
   } else if (currentMinutes >= 3 && currentMinutes <= 7) {
     targetWordsMinutes[targetWordsMinutesLength++] = "FIVE";
     targetWordsMinutes[targetWordsMinutesLength++] = "PAST";
-  } else if (currentMinutes >= 33 && currentMinutes <= 37) {
+  } else if (currentMinutes >= MINUTE_THAT_TO_STATEMENTS_BEGIN && currentMinutes <= 37) {
     targetWordsMinutes[targetWordsMinutesLength++] = "TWENTYFIVE";
     targetWordsMinutes[targetWordsMinutesLength++] = "TO";
   } else if (currentMinutes >= 38 && currentMinutes <= 42) {
@@ -87,12 +89,12 @@ void setMinutesWords(int currentMinutes) {
   } else if (currentMinutes >= 48 && currentMinutes <= 52) {
     targetWordsMinutes[targetWordsMinutesLength++] = "TEN";
     targetWordsMinutes[targetWordsMinutesLength++] = "TO";
-  } else if (currentMinutes >= 53) {
+  } else if (currentMinutes >= 53 and currentMinutes <= 57) {
     targetWordsMinutes[targetWordsMinutesLength++] = "FIVE";
     targetWordsMinutes[targetWordsMinutesLength++] = "TO";
   } else {
     targetWordsMinutes[targetWordsMinutesLength++] = "OCLOCK";
-  }
+  }  
 
 }
 
@@ -113,29 +115,32 @@ void setHoursWords(int currentHours) {
 void setTargetWordsBasedOnTime() {
   int currentHours, currentMinutes;
   getTime(millis(), currentHours, currentMinutes);
+  
 
   setMinutesWords(currentMinutes);
   setHoursWords(currentHours);
 }
 
 
-void lightMinutesWord(String word) {
+int lightMinutesWord(String word) {
   int idx = letters.indexOf(word);
   if (idx != -1) {
     for (int i = idx; i < idx + word.length(); i++) {
       leds[i] = CRGB::Purple;
     }
   }
+  return idx;
 }
 
 
-void lightHoursWord(String word) {
+int lightHoursWord(String word) {
   int idx = letters.lastIndexOf(word);
   if (idx != -1) {
     for (int i = idx; i < idx + word.length(); i++) {
       leds[i] = CRGB::Purple;
     }
   }
+  return idx;
 }
 
 String reverseString(String str) {
@@ -154,23 +159,29 @@ void getTime(unsigned long milliseconds, int& hours, int& minutes) {
 
   hours = (totalMinutes / 60) % 24;
   minutes = totalMinutes % 60;
+  
+  if (minutes >= MINUTE_THAT_TO_STATEMENTS_BEGIN) {
+    hours = hours == 23 ? 0 : hours + 1;      
+  }
 }
 
 
 void loop() {
   targetWordsMinutes[targetWordsMinutesLength++] = "IT";
   targetWordsMinutes[targetWordsMinutesLength++] = "IS";
-  Serial.println("loop");
-  // String targetWords[] = {"TW", "EN", "TY", "TIME", "IS"};
+  
   setTargetWordsBasedOnTime();
-  // String targetWords[] = {"TWENTY", "QUARTER"};
+  
   for (int i = 0; i < targetWordsMinutesLength; i++) {
-    lightMinutesWord(targetWordsMinutes[i]);
-    lightMinutesWord(reverseString(targetWordsMinutes[i]));
+    if (lightMinutesWord(targetWordsMinutes[i]) == -1) {    
+      lightMinutesWord(reverseString(targetWordsMinutes[i]));
+    }
   }
-  for (int i = 0; i < targetWordsHoursLength; i++) {
-    lightHoursWord(targetWordsHours[i]);
-    lightHoursWord(reverseString(targetWordsHours[i]));
+
+  for (int i = 0; i < targetWordsHoursLength; i++) {    
+    if (lightHoursWord(targetWordsHours[i]) == -1) {
+      lightHoursWord(reverseString(targetWordsHours[i]));
+    }    
   }
   targetWordsMinutesLength = 0;
   targetWordsHoursLength = 0;
