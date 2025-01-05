@@ -7,19 +7,26 @@
 #define LED_TYPE    WS2812 // Try different types here if WS2812 doesn't work
 #define COLOR_ORDER RGB    // Common color order for many addressable LEDs
 
+
 CRGB leds[NUM_LEDS];
 
+const unsigned long INITIAL_HOURS = 19;
+const unsigned long INITIAL_MINUTES = 30;
 String receivedData;
 String currentTime;
 String letters = "ITLISASTIMECDRETRAUQCATWENTYFIVEXOTFNETBFLAHPASTERUNINEEERHTXISENOFOURFIVETWONEVELETHGIESEVENTWELVEKCOLCOESNETPAMPIWINPMS";
+
+const char* HOUR_WORDS[] = {"ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE"};
+
+
+const int MAX_SIZE = 10;
+String targetWords[MAX_SIZE];
+int currentLength = 0;
 
 void setup() {  
   FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS);
   FastLED.clear();
   FastLED.show();
-  // for (int i = 0; i < NUM_LEDS; i++) {
-  //   leds[i] = CRGB::Black;
-  // }
 
   // Serial.begin(9600);
   // Serial.println("Waiting for data........");
@@ -46,14 +53,36 @@ String readValue(String key, String data) {
   }
 }
 
+void setMinutesWords(int currentMinutes) {
+  if (currentMinutes >= 23 && currentMinutes <= 37) {
+    targetWords[currentLength++] = "HALF";
+    targetWords[currentLength++] = "PAST";
+  } else if (currentMinutes >= 8 && currentMinutes <= 22) {
+    targetWords[currentLength++] = "QUARTER";
+    targetWords[currentLength++] = "PAST";
+  } else if (currentMinutes >= 37 && currentMinutes <= 52) {
+    targetWords[currentLength++] = "QUARTER";
+    targetWords[currentLength++] = "TO";
+  }
+}
+
+void setHoursWords(int currentHours) {  
+  if (currentHours == 0) {  // midnight
+      currentHours = 12;
+  }
+  targetWords[currentLength++] = HOUR_WORDS[currentHours - 1];
+}
+
+void setTargetWordsBasedOnTime() {
+  int currentHours, currentMinutes;
+  getTime(millis(), currentHours, currentMinutes);
+
+  setMinutesWords(currentMinutes);
+  // setHoursWords(currentHours);
+
+}
+
 void lightWord(String word) {
-  // for (int i = 0; i < NUM_LEDS - word.length(); i++) {
-  //   if (letters.substring(i, word.length()) == word) {
-  //     for (int j = i; j < i + word.length(); j++) {
-  //       leds[j] = CRGB::Purple;
-  //     }
-  //   }
-  // }
   int idx = letters.indexOf(word);
   Serial.println(idx);
   while (idx != -1) {
@@ -62,16 +91,35 @@ void lightWord(String word) {
     }    
     idx = letters.indexOf(word, idx + word.length());
   }
-} 
+}
+
+String reverseString(String str) {
+  String reversed = "";
+  for (int i = str.length() - 1; i >= 0; i--) {
+    reversed += str.charAt(i);
+  }
+  return reversed;
+}
+
+void getTime(unsigned long milliseconds, int& hours, int& minutes) {  
+  unsigned long totalMinutes = (milliseconds / 1000) / 60;
+  
+  totalMinutes += (INITIAL_HOURS * 60) + INITIAL_MINUTES;
+
+  hours = (totalMinutes / 60) % 24;    // Use modulo 24 to keep in 24-hour format
+  minutes = totalMinutes % 60;
+}
 
 
 void loop() {
   Serial.println("loop");
   // String targetWords[] = {"TW", "EN", "TY", "TIME", "IS"};
-  String targetWords[] = {"N"};
-  int size = sizeof(targetWords) / sizeof(targetWords[0]);
+  setTargetWordsBasedOnTime();
+  // String targetWords[] = {"TWENTY", "QUARTER"};
+  int size = currentLength;
   for (int i = 0; i < size; i++) {
     lightWord(targetWords[i]);
+    lightWord(reverseString(targetWords[i]));
   }
   FastLED.show();
 }
