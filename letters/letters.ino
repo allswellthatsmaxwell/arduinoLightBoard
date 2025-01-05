@@ -9,13 +9,13 @@
 
 
 CRGB leds[NUM_LEDS];
+CRGB newLeds[NUM_LEDS];
 
-const unsigned long INITIAL_HOURS = 1;
-const unsigned long INITIAL_MINUTES = 14;
+const unsigned long INITIAL_HOURS = 21;
+const unsigned long INITIAL_MINUTES = 57;
 unsigned int MINUTE_THAT_TO_STATEMENTS_BEGIN = 33;
 String receivedData;
 String currentTime;
-// String letters = "ITLISASTIME CDRETRAUQCA TWENTYFIVEX OTFNETBFLAH PASTERUNINE EERHTXISENO FOURFIVETWO NEVELETHGIE SEVENTWELVE KCOLCOESNET PAMPIWINPMS";
 String letters = "ITLISASTIMECDRETRAUQCATWENTYFIVEXOTFNETBFLAHPASTERUNINEEERHTXISENOFOURFIVETWONEVELETHGIESEVENTWELVEKCOLCOESNETPAMPIWINPMS";
 
 const char* HOUR_WORDS[] = {"ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE"};
@@ -33,9 +33,9 @@ void setup() {
   FastLED.clear();
   FastLED.show();
 
-  Serial.begin(9600);
-  delay(1000);
-  Serial.println("Serial");
+  // Serial.begin(9600);
+  // delay(1000);
+  // Serial.println("Serial");
 
   // // Wait for data to arrive
   // while (Serial.available() == 0);
@@ -95,8 +95,16 @@ void setMinutesWords(int currentMinutes) {
     targetWordsMinutes[targetWordsMinutesLength++] = "TO";
   } else {
     targetWordsMinutes[targetWordsMinutesLength++] = "OCLOCK";
-  }  
+  }
+}
 
+bool thereWasAnUpdate() {
+  for (int i = 0; i < NUM_LEDS; i++) {
+    if (leds[i] != newLeds[i]) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void setHoursWords(int currentHours) {  
@@ -133,7 +141,7 @@ int lightMinutesWord(String word) {
   }  
   if (idx != -1) {      
     for (int i = idx; i < idx + word.length(); i++) {
-      leds[i] = CRGB::Purple;
+      newLeds[i] = CRGB::Purple;
     }
   }
   return idx;
@@ -149,7 +157,7 @@ int lightHoursWord(String word) {
   }
   if (idx != -1) {
     for (int i = idx; i < idx + word.length(); i++) {
-      leds[i] = CRGB::Purple;
+      newLeds[i] = CRGB::Purple;
     }
   }
   return idx;
@@ -177,8 +185,17 @@ void getTime(unsigned long milliseconds, int& hours, int& minutes) {
   }
 }
 
+void clearStatusBetweenLoops() {
+  targetWordsMinutesLength = 0;
+  targetWordsHoursLength = 0;
+
+  for (int i = 0; i < NUM_LEDS; i++) {
+    newLeds[i] = CRGB::Black;
+  }
+}
 
 void loop() {
+  clearStatusBetweenLoops();
   targetWordsMinutes[targetWordsMinutesLength++] = "IT";
   targetWordsMinutes[targetWordsMinutesLength++] = "IS";
   
@@ -195,7 +212,11 @@ void loop() {
       lightHoursWord(reverseString(targetWordsHours[i]));
     }    
   }
-  targetWordsMinutesLength = 0;
-  targetWordsHoursLength = 0;
+  
+  if (thereWasAnUpdate()) {
+    for(int i = 0; i < NUM_LEDS; i++) {
+      leds[i] = newLeds[i];
+    }
+  }
   FastLED.show();
 }
