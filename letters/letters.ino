@@ -14,10 +14,9 @@ RTC_DS3231 rtc;
 CRGB leds[NUM_LEDS];
 CRGB newLeds[NUM_LEDS];
 
-const unsigned long INITIAL_HOURS = 22;
-const unsigned long INITIAL_MINUTES = 3;
 unsigned int MINUTE_THAT_TO_STATEMENTS_BEGIN = 33;
-String currentTime;
+
+// The layout of the letters on the physical board, in order.
 const char letters[] PROGMEM = "ITLISASTIMECDRETRAUQCATWENTYFIVEXOTFNETBFLAHPASTERUNINEEERHTXISENOFOURFIVETWONEVELETHGIESEVENTWELVEKCOLCOESNETPAMPIWINPMS";
 char reversedBuffer[20]; 
 
@@ -35,7 +34,7 @@ void setup() {
   Serial.begin(9600);
   // Serial.println("Start");
 
-  Wire.begin();  // Add this line
+  Wire.begin();
   delay(1000);   // Add a delay to let I2C stabilize
   
   Serial.println("Attempting to find RTC...");
@@ -148,7 +147,7 @@ int findInProgmem(const char* word) {
     }
     if(match) {
       // Check if it crosses a row boundary
-      if(i/DIM != (i+wordLen-1)/DIM) {
+      if(i/DIM != (i + wordLen - 1) / DIM) {
         continue; // Skip this match, look for next
       }
       return i;
@@ -159,7 +158,8 @@ int findInProgmem(const char* word) {
 
 int lightWord(const char* word) {
   if (strlen(word) == 0) {
-    // Serial.println("Word of length 0; skipping.");
+    // Should never happen, but when I overflowed memory it did happen, so keeping this check.
+    Serial.println("Word of length 0; skipping.");
     return -1;
   }
   int idx = findInProgmem(word);
@@ -167,7 +167,6 @@ int lightWord(const char* word) {
     // match crosses rows; don't count it
     Serial.println("Crosses rows, looking for next match");
 
-    // idx = letters.indexOf(word, idx + 1);
     idx = findInProgmem(word);
   }  
   if (idx != -1) {      
@@ -189,12 +188,11 @@ const char* reverseString(const char* str) {
 }
 
 void getTime(int& hours, int& minutes) {
-  static DateTime now;  // Make it static to reuse the memory
+  static DateTime now;  // static to reuse the memory
   now = rtc.now();     // Just update the values
   
-  // Get the values immediately
-  hours = (int)now.hour();    // Explicit cast
-  minutes = (int)now.minute(); // Explicit cast
+  hours = (int)now.hour();
+  minutes = (int)now.minute();
 
   if (minutes >= MINUTE_THAT_TO_STATEMENTS_BEGIN) {
     hours = hours == 23 ? 0 : hours + 1;      
@@ -219,7 +217,14 @@ void loop() {
   setTargetWordsBasedOnTime();
   
   for (int i = 0; i < targetWordsMinutesLength; i++) {
-    if (lightWord(targetWordsMinutes[i]) == -1) {    
+    if (lightWord(targetWordsMinutes[i]) == -1) {
+      // Since every other row is in reverse order, we could check which is which and only reverse-search
+      // when we're on a reverse row. But I'm lazy so we just check reversed if we didn't find the word
+      // on the forward pass.
+      //
+      // This works because no minutes word appears twice, and no hours word appears twice. "Five"
+      // can appear twice, as in "FIVE MINUTES TO FIVE", but the former is a minutes word and the latter
+      // is an hours word, so searching for minutes here and hours below still solves that.
       lightWord(reverseString(targetWordsMinutes[i]));
     }
   }
@@ -236,5 +241,4 @@ void loop() {
     }
   }
   FastLED.show();
-  delay(1000);
 }
