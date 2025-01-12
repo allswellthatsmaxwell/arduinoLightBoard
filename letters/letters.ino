@@ -1,54 +1,56 @@
 #include <FastLED.h>
+#include <Wire.h>
+#include <RTClib.h>
 
 #define DIM 11
 
-#define LED_PIN     6      // Pin connected to the data input of the strip
-#define NUM_LEDS    DIM*DIM     // Number of LEDs in the strip (adjust as needed)
-#define LED_TYPE    WS2812 // Try different types here if WS2812 doesn't work
-#define COLOR_ORDER RGB    // Common color order for many addressable LEDs
+#define LED_PIN     6        // Pin connected to the data input of the strip
+#define NUM_LEDS    DIM*DIM  // Number of LEDs in the strip (adjust as needed)
+#define LED_TYPE    WS2812   // Try different types here if WS2812 doesn't work
+#define COLOR_ORDER RGB
 
+RTC_DS3231 rtc;
 
 CRGB leds[NUM_LEDS];
 CRGB newLeds[NUM_LEDS];
 
-const unsigned long INITIAL_HOURS = 21;
-const unsigned long INITIAL_MINUTES = 59;
+const unsigned long INITIAL_HOURS = 22;
+const unsigned long INITIAL_MINUTES = 3;
 unsigned int MINUTE_THAT_TO_STATEMENTS_BEGIN = 33;
-String receivedData;
 String currentTime;
-String letters = "ITLISASTIMECDRETRAUQCATWENTYFIVEXOTFNETBFLAHPASTERUNINEEERHTXISENOFOURFIVETWONEVELETHGIESEVENTWELVEKCOLCOESNETPAMPIWINPMS";
+const char letters[] PROGMEM = "ITLISASTIMECDRETRAUQCATWENTYFIVEXOTFNETBFLAHPASTERUNINEEERHTXISENOFOURFIVETWONEVELETHGIESEVENTWELVEKCOLCOESNETPAMPIWINPMS";
+char reversedBuffer[20]; 
 
 const char* HOUR_WORDS[] = {"ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE"};
 
 
 const int MAX_SIZE = 10;
-String targetWordsMinutes[MAX_SIZE];
+const char* targetWordsMinutes[MAX_SIZE];
 int targetWordsMinutesLength = 0;
 
-String targetWordsHours[MAX_SIZE];
+const char* targetWordsHours[MAX_SIZE];
 int targetWordsHoursLength = 0;
 
-void setup() {  
+void setup() {
+  Serial.begin(9600);
+  // Serial.println("Start");
+
+  Wire.begin();  // Add this line
+  delay(1000);   // Add a delay to let I2C stabilize
+  
+  Serial.println("Attempting to find RTC...");
+  if (!rtc.begin()) {
+    Serial.println("Couldn't find RTC");
+    Serial.println("Check your connections!");
+    while (1);
+  }
+  Serial.println("Found RTC");
+
+  rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+
   FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS);
   FastLED.clear();
   FastLED.show();
-
-  // Serial.begin(9600);
-  // delay(1000);
-  // Serial.println("Serial");
-
-  // // Wait for data to arrive
-  // while (Serial.available() == 0);
-
-  // receivedData = Serial.readString();
-  // Serial.print("receivedData: ");
-  // Serial.println(receivedData);
-
-  // Parse the data
-  // currentTime = readValue("TIME=", receivedData);
-  // letters = readValue("LETTERS=", receivedData);
-  // Serial.println(currentTime);
-  // Serial.println(letters);
 }
 
 String readValue(String key, String data) {
@@ -123,67 +125,82 @@ void setHoursWords(int currentHours) {
 
 void setTargetWordsBasedOnTime() {
   int currentHours, currentMinutes;
-  getTime(millis(), currentHours, currentMinutes);
-  
+  getTime(currentHours, currentMinutes);
 
   setMinutesWords(currentMinutes);
-  setHoursWords(currentHours);
+  setHoursWords(currentHours);  
 }
 
+int findInProgmem(const char* word) {
+  char letter;
+  int wordLen = strlen(word);
+  
+  // Search through possible starting positions
+  for(int i = 0; i < sizeof(letters)-wordLen; i++) {
+    // Check if word matches starting at position i
+    bool match = true;
+    for(int j = 0; j < wordLen; j++) {
+      letter = pgm_read_byte(&letters[i+j]);
+      if(letter != word[j]) {
+        match = false;
+        break;
+      }
+    }
+    if(match) {
+      // Check if it crosses a row boundary
+      if(i/DIM != (i+wordLen-1)/DIM) {
+        continue; // Skip this match, look for next
+      }
+      return i;
+    }
+  }
+  return -1;
+}
 
-int lightMinutesWord(String word) {
-  int idx = letters.indexOf(word);
-  if (idx / DIM != (idx + word.length() - 1) / DIM) {
+int lightWord(const char* word) {
+  if (strlen(word) == 0) {
+    // Serial.println("Word of length 0; skipping.");
+    return -1;
+  }
+  int idx = findInProgmem(word);
+  if (idx / DIM != (idx + strlen(word) - 1) / DIM) {
     // match crosses rows; don't count it
     Serial.println("Crosses rows, looking for next match");
 
-    idx = letters.indexOf(word, idx + 1);
+    // idx = letters.indexOf(word, idx + 1);
+    idx = findInProgmem(word);
   }  
   if (idx != -1) {      
-    for (int i = idx; i < idx + word.length(); i++) {
-      newLeds[i] = CRGB::Purple;
+    for (int i = idx; i < idx + strlen(word); i++) {
+      newLeds[i] = CRGB::Orange;
     }
   }
   return idx;
 }
 
 
-int lightHoursWord(String word) {
-  int idx = letters.lastIndexOf(word);
-  if (idx / DIM != (idx + word.length() - 1) / DIM) {
-    Serial.println("Crosses rows, looking for next match");
-    // match crosses rows; don't count it
-    idx = letters.indexOf(word, idx + 1);
+const char* reverseString(const char* str) {
+  int len = strlen(str);
+  for (int i = 0; i < len; i++) {
+    reversedBuffer[i] = str[len - 1 - i];
   }
-  if (idx != -1) {
-    for (int i = idx; i < idx + word.length(); i++) {
-      newLeds[i] = CRGB::Purple;
-    }
-  }
-  return idx;
+  reversedBuffer[len] = '\0';  // Null terminate the string
+  return reversedBuffer;
 }
 
-String reverseString(String str) {
-  String reversed = "";
-  for (int i = str.length() - 1; i >= 0; i--) {
-    reversed += str.charAt(i);
-  }
-  return reversed;
-}
-
-
-void getTime(unsigned long milliseconds, int& hours, int& minutes) {  
-  unsigned long totalMinutes = (milliseconds / 1000) / 60;
+void getTime(int& hours, int& minutes) {
+  static DateTime now;  // Make it static to reuse the memory
+  now = rtc.now();     // Just update the values
   
-  totalMinutes += (INITIAL_HOURS * 60) + INITIAL_MINUTES;
+  // Get the values immediately
+  hours = (int)now.hour();    // Explicit cast
+  minutes = (int)now.minute(); // Explicit cast
 
-  hours = (totalMinutes / 60) % 24;
-  minutes = totalMinutes % 60;
-  
   if (minutes >= MINUTE_THAT_TO_STATEMENTS_BEGIN) {
     hours = hours == 23 ? 0 : hours + 1;      
   }
 }
+
 
 void clearStatusBetweenLoops() {
   targetWordsMinutesLength = 0;
@@ -202,14 +219,14 @@ void loop() {
   setTargetWordsBasedOnTime();
   
   for (int i = 0; i < targetWordsMinutesLength; i++) {
-    if (lightMinutesWord(targetWordsMinutes[i]) == -1) {    
-      lightMinutesWord(reverseString(targetWordsMinutes[i]));
+    if (lightWord(targetWordsMinutes[i]) == -1) {    
+      lightWord(reverseString(targetWordsMinutes[i]));
     }
   }
 
   for (int i = 0; i < targetWordsHoursLength; i++) {    
-    if (lightHoursWord(targetWordsHours[i]) == -1) {
-      lightHoursWord(reverseString(targetWordsHours[i]));
+    if (lightWord(targetWordsHours[i]) == -1) {
+      lightWord(reverseString(targetWordsHours[i]));
     }    
   }
   
@@ -219,4 +236,5 @@ void loop() {
     }
   }
   FastLED.show();
+  delay(1000);
 }
